@@ -1,10 +1,9 @@
-use crate::schema::notes::dsl::notes;
-use diesel::prelude::*;
+use aws_sdk_dynamodb::types::AttributeValue;
 use orm::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-#[derive(Queryable, Selectable)]
-#[diesel(table_name = crate::schema::notes)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NoteEntity {
     pub id: i32,
     pub title: String,
@@ -12,12 +11,27 @@ pub struct NoteEntity {
     // created_at: NaiveDateTime,
 }
 
-#[derive(Insertable)]
-#[diesel(table_name = crate::schema::notes)]
-pub struct NewNoteEntity {
-    pub title: String,
-    pub body: String,
+#[derive(Debug, Clone, Serialize)]
+pub struct NoteIndex {}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct NotePrimaryKey {
+    pub pk: String,
+    pub sk: String,
 }
 
-impl Entity for NoteEntity {}
-impl Entity for NewNoteEntity {}
+impl Entity for NoteEntity {
+    type PrimaryKey = NotePrimaryKey;
+    type IndexFields = NoteIndex;
+
+    fn get_primary_key(&self) -> Self::PrimaryKey {
+        NotePrimaryKey {
+            pk: "NOTE".to_string(),
+            sk: format!("NOTE_ID#{}", self.id),
+        }
+    }
+
+    fn get_index_fields(&self) -> Self::IndexFields {
+        NoteIndex {}
+    }
+}

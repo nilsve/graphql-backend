@@ -1,48 +1,43 @@
-use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
-use orm::prelude::*;
+use crate::repository::notes::entities::NoteEntity;
+use aws_sdk_dynamodb::Client;
+use orm::prelude::{DynamoRepository, RepositoryIndex};
+use serde::Serialize;
 
-use crate::repository::notes::entities::{NewNoteEntity, NoteEntity};
-use crate::schema::notes::dsl::notes;
+const TABLE_NAME: &str = "notes";
 
-pub struct NotesRepository {
-    pool: Pool<ConnectionManager<PgConnection>>,
+pub struct DynamoNotesRepository {
+    client: Client,
 }
 
-impl NotesRepository {
-    pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
-        Self { pool }
+#[derive(Debug, Clone, Serialize)]
+pub struct NotePrimaryIndex {
+    pk: String,
+    sk: String,
+}
+
+impl NotePrimaryIndex {
+    pub fn find_by_id(id: i32) -> Self {
+        Self {
+            pk: "NOTE".to_string(),
+            sk: format!("NOTE_ID#{}", id),
+        }
     }
 }
 
-impl Repository<NoteEntity, NewNoteEntity> for NotesRepository {
-    type Connection = PooledConnection<ConnectionManager<PgConnection>>;
+impl RepositoryIndex for NotePrimaryIndex {}
 
-    fn get_connection(&self) -> Self::Connection {
-        self.pool.get().unwrap()
+impl DynamoNotesRepository {
+    pub fn new(client: Client) -> Self {
+        Self { client }
+    }
+}
+
+impl DynamoRepository<NoteEntity> for DynamoNotesRepository {
+    fn get_table_name(&self) -> &'static str {
+        "notes"
     }
 
-    fn create(&self, item: NewNoteEntity) -> QueryResult<usize> {
-        diesel::insert_into(notes)
-            .values(&item)
-            .execute(&mut self.get_connection())
-    }
-
-    fn update(&self, item: NoteEntity) -> QueryResult<usize> {
-        todo!()
-    }
-
-    fn delete(&self, item: NoteEntity) -> QueryResult<usize> {
-        todo!()
-    }
-
-    fn find(&self, id: i32) -> QueryResult<Option<NoteEntity>> {
-        todo!()
-    }
-
-    fn find_all(&self) -> QueryResult<Vec<NoteEntity>> {
-        notes
-            .select(NoteEntity::as_select())
-            .load(&mut self.get_connection())
+    fn get_client(&self) -> &'_ Client {
+        &self.client
     }
 }

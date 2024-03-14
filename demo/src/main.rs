@@ -1,42 +1,41 @@
-use crate::repository::notes::repository::NotesRepository;
+use crate::repository::notes::entities::NoteEntity;
+use crate::repository::notes::repository::{DynamoNotesRepository, NotePrimaryIndex};
 use crate::repository::notes::service::NotesService;
-use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, Pool};
-use dotenvy::dotenv;
+use aws_config::load_from_env;
+use aws_sdk_dynamodb::Client;
 use orm::prelude::*;
-use std::env;
+use std::error::Error;
 
 mod repository;
-mod schema;
 
 #[actix_web::main]
-async fn main() -> QueryResult<()> {
-    let connection_pool = get_connection_pool();
+async fn main() -> Result<(), DynamoRepositoryError> {
+    let config = load_from_env().await;
+    let client = Client::new(&config);
 
-    let repository = NotesRepository::new(connection_pool);
+    let repository = DynamoNotesRepository::new(client);
     let service = NotesService::new(repository);
 
-    let notes = service.find_all()?;
-    println!("Displaying {} notes", notes.len());
-    for note in notes {
-        println!("{}", note.title);
-        println!("----------\n");
-        println!("{}", note.body);
-    }
+    service
+        .upsert(NoteEntity {
+            id: 2,
+            title: "Hello, world! 2".to_string(),
+            body: "This is a test note".to_string(),
+        })
+        .await
+        .unwrap();
+
+    let result = service.find_by_id(2).await?;
+
+    println!("{:?}", result);
+
+    // let notes = service.find()?;
+    // println!("Displaying {} notes", notes.len());
+    // for note in notes {
+    //     println!("{}", note.title);
+    //     println!("----------\n");
+    //     println!("{}", note.body);
+    // }
 
     Ok(())
-}
-
-pub fn get_connection_pool() -> Pool<ConnectionManager<PgConnection>> {
-    dotenv().unwrap();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    let manager = ConnectionManager::<PgConnection>::new(database_url);
-    // Refer to the `r2d2` documentation for more methods to use
-    // when building a connection pool
-    Pool::builder()
-        .test_on_check_out(true)
-        .build(manager)
-        .expect("Could not build connection pool")
 }
