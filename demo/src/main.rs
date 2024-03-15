@@ -1,10 +1,9 @@
 use crate::repository::notes::entities::NoteEntity;
-use crate::repository::notes::repository::{DynamoNotesRepository, NotePrimaryIndex};
+use crate::repository::notes::repository::DynamoNotesRepository;
 use crate::repository::notes::service::NotesService;
 use aws_config::load_from_env;
 use aws_sdk_dynamodb::Client;
 use orm::prelude::*;
-use std::error::Error;
 
 mod repository;
 

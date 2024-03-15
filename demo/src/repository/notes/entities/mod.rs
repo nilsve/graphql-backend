@@ -1,7 +1,5 @@
-use aws_sdk_dynamodb::types::AttributeValue;
 use orm::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NoteEntity {
