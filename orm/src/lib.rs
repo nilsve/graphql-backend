@@ -3,7 +3,7 @@ pub mod server;
 pub mod service;
 
 pub mod prelude {
-    pub use crate::repository::*;
-    pub use crate::server::*;
+    pub use crate::repository::repository::*;
+    pub use crate::repository::entity::*;
     pub use crate::service::*;
 }
