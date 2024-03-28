@@ -2,7 +2,7 @@ use aws_sdk_dynamodb::operation::delete_item::DeleteItemOutput;
 use aws_sdk_dynamodb::operation::put_item::PutItemOutput;
 use serde::Serialize;
 
-use crate::prelude::{DynamoRepositoryError, QueryData};
+use crate::prelude::{DynamoRepositoryError, QueryData, QueryResult};
 use crate::repository::entity::Entity;
 use crate::repository::repository::{DynamoRepository, RepositoryIndex};
 
@@ -32,6 +32,13 @@ where
     }
     async fn get<Index: RepositoryIndex>(&self, index: Index) -> Result<E, DynamoRepositoryError> {
         self.get_repository().get(index).await
+    }
+
+    async fn query<Index: RepositoryIndex>(
+        &self,
+        query_data: QueryData<Index>,
+    ) -> Result<QueryResult<E>, DynamoRepositoryError> {
+        self.get_repository().query(query_data).await
     }
 
     async fn query_all<Index: RepositoryIndex>(

@@ -1,10 +1,13 @@
-use crate::repository::notes::entities::NoteEntity;
 use aws_sdk_dynamodb::Client;
-use orm::prelude::{DynamoRepository, RepositoryIndex};
 use serde::Serialize;
+
+use orm::prelude::{DynamoRepository, RepositoryIndex};
+
+use crate::notes::entities::NoteEntity;
 
 const TABLE_NAME: &str = "notes";
 
+#[derive(Clone)]
 pub struct DynamoNotesRepository {
     client: Client,
 }
@@ -16,10 +19,10 @@ pub struct NotePrimaryIndex {
 }
 
 impl NotePrimaryIndex {
-    pub fn find_by_id(id: i32) -> Self {
+    pub fn find_by_id(uuid: String) -> Self {
         Self {
             pk: "NOTE".to_string(),
-            sk: format!("NOTE_ID#{}", id),
+            sk: format!("NOTE_ID#{}", uuid),
         }
     }
 }
@@ -34,7 +37,7 @@ impl DynamoNotesRepository {
 
 impl DynamoRepository<NoteEntity> for DynamoNotesRepository {
     fn get_table_name(&self) -> &'static str {
-        "notes"
+        TABLE_NAME
     }
 
     fn get_client(&self) -> &'_ Client {

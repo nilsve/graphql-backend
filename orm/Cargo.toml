@@ -13,3 +13,4 @@ aws-sdk-dynamodb = "1.16.0"
 serde_dynamo = { version = "4.2.13", features = ["aws-sdk-dynamodb+1"] }
 serde = "1.0.197"
 thiserror = "1.0.58"
+actix-web = "4"

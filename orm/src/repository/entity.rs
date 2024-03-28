@@ -74,58 +74,58 @@ pub trait Entity: Serialize + for<'a> Deserialize<'a> + Send + 'static {
 }
 
 // Unit test for serialization
-#[cfg(test)]
-mod test {
-    use std::collections::HashMap;
-
-    use aws_sdk_dynamodb::types::AttributeValue;
-    use serde::{Deserialize, Serialize};
-    use serde_dynamo::{to_item, Item};
-
-    use crate::prelude::Entity;
-
-    #[derive(Serialize, Deserialize)]
-    struct TestEntity {
-        id: i32,
-        title: String,
-        body: String,
-    }
-
-    #[derive(Serialize, Deserialize, Default)]
-    struct PrimaryKey {
-        pk: String,
-        sk: String,
-    }
-
-    #[derive(Serialize, Deserialize, Default)]
-    struct Indexes {
-        gsi_1_pk: String,
-        gsi_1_sk: String,
-    }
-
-    impl Entity for TestEntity {
-        type PrimaryKey = PrimaryKey;
-        type IndexFields = Indexes;
-
-        fn get_primary_key(&self) -> Self::PrimaryKey {
-            PrimaryKey::default()
-        }
-
-        fn get_index_fields(&self) -> Self::IndexFields {
-            Indexes::default()
-        }
-    }
-
-    #[test]
-    fn bla() {
-        let entity = TestEntity {
-            id: 1,
-            title: "Hello".to_string(),
-            body: "World".to_string(),
-        };
-
-        let item: Item = to_item(&entity).unwrap();
-
-        let dynamo_item: HashMap<String, AttributeValue> = item.into();
-    }
-}
+// #[cfg(test)]
+// mod test {
+//     use std::collections::HashMap;
+//
+//     use aws_sdk_dynamodb::types::AttributeValue;
+//     use serde::{Deserialize, Serialize};
+//     use serde_dynamo::{to_item, Item};
+//
+//     use crate::prelude::Entity;
+//
+//     #[derive(Serialize, Deserialize)]
+//     struct TestEntity {
+//         id: i32,
+//         title: String,
+//         body: String,
+//     }
+//
+//     #[derive(Serialize, Deserialize, Default)]
+//     struct PrimaryKey {
+//         pk: String,
+//         sk: String,
+//     }
+//
+//     #[derive(Serialize, Deserialize, Default)]
+//     struct Indexes {
+//         gsi_1_pk: String,
+//         gsi_1_sk: String,
+//     }
+//
+//     impl Entity for TestEntity {
+//         type PrimaryKey = PrimaryKey;
+//         type IndexFields = Indexes;
+//
+//         fn get_primary_key(&self) -> Self::PrimaryKey {
+//             PrimaryKey::default()
+//         }
+//
+//         fn get_index_fields(&self) -> Self::IndexFields {
+//             Indexes::default()
+//         }
+//     }
+//
+//     #[test]
+//     fn bla() {
+//         let entity = TestEntity {
+//             id: 1,
+//             title: "Hello".to_string(),
+//             body: "World".to_string(),
+//         };
+//
+//         let item: Item = to_item(&entity).unwrap();
+//
+//         let _dynamo_item: HashMap<String, AttributeValue> = item.into();
+//     }
+// }

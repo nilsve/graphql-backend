@@ -1,12 +1,32 @@
-use orm::prelude::*;
+use apistos::ApiComponent;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+use orm::prelude::*;
+
+#[derive(Debug, Clone, Serialize, Deserialize, ApiComponent, JsonSchema)]
 pub struct NoteEntity {
-    pub id: i32,
+    pub id: Uuid,
     pub title: String,
     pub body: String,
     // created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, Deserialize, ApiComponent, JsonSchema)]
+pub struct NewNoteEntity {
+    pub title: String,
+    pub body: String,
+}
+
+impl From<NewNoteEntity> for NoteEntity {
+    fn from(new_note: NewNoteEntity) -> Self {
+        NoteEntity {
+            id: Uuid::new_v4(),
+            title: new_note.title,
+            body: new_note.body,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

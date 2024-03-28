@@ -28,6 +28,15 @@ pub enum DynamoRepositoryError {
     ItemNotFoundError,
 }
 
+impl Serialize for DynamoRepositoryError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        format!("{}", self).serialize(serializer)
+    }
+}
+
 #[derive(Debug)]
 pub struct QueryResult<E: Entity> {
     pub items: Vec<E>,
@@ -58,7 +67,7 @@ pub struct QueryData<Index: RepositoryIndex> {
     last_evaluated_key: Option<LastEvaluatedKey>,
 }
 
-struct ExpressionData {
+pub struct ExpressionData {
     key_condition_expression: String,
     expression_attribute_values: HashMap<String, AttributeValue>,
 }
@@ -176,7 +185,6 @@ where
             .set_exclusive_start_key(query_data.last_evaluated_key.clone())
             .set_expression_attribute_values(Some(expression_data.expression_attribute_values))
             .key_condition_expression(expression_data.key_condition_expression)
-            .limit(1)
             .table_name(self.get_table_name())
             .send()
             .await
