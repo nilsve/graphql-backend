@@ -1,3 +1,4 @@
+use actix_cors::Cors;
 use aws_config::load_from_env;
 use aws_sdk_dynamodb::Client;
 
@@ -31,6 +32,7 @@ async fn main() -> Result<(), DynamoRepositoryError> {
         actix_web::App::new()
             .app_data(actix_web::web::Data::new(service.clone()))
             // .document(spec)
+            .wrap(Cors::permissive())
             .service(get_routes())
     })
     .bind(("localhost", 8080))
