@@ -1,9 +1,10 @@
-use crate::prelude::DynamoRepositoryError;
-use crate::repository::entity::Entity;
-use crate::repository::repository::{DynamoRepository, RepositoryIndex};
 use aws_sdk_dynamodb::operation::delete_item::DeleteItemOutput;
 use aws_sdk_dynamodb::operation::put_item::PutItemOutput;
 use serde::Serialize;
+
+use crate::prelude::{DynamoRepositoryError, QueryData};
+use crate::repository::entity::Entity;
+use crate::repository::repository::{DynamoRepository, RepositoryIndex};
 
 #[async_trait::async_trait]
 pub trait CrudService<E, R>
@@ -31,6 +32,29 @@ where
     }
     async fn get<Index: RepositoryIndex>(&self, index: Index) -> Result<E, DynamoRepositoryError> {
         self.get_repository().get(index).await
+    }
+
+    async fn query_all<Index: RepositoryIndex>(
+        &self,
+        index: Index,
+    ) -> Result<Vec<E>, DynamoRepositoryError> {
+        // Keep querying until result of QueryResult.last_evaluated_key is None
+        let mut items = Vec::new();
+        let mut last_evaluated_key = None;
+        loop {
+            let result = self
+                .get_repository()
+                .query(QueryData::new(index.clone(), last_evaluated_key))
+                .await?;
+
+            items.extend(result.items);
+            last_evaluated_key = result.last_evaluated_key;
+            if last_evaluated_key.is_none() {
+                break;
+            }
+        }
+
+        Ok(items)
     }
 }
 //

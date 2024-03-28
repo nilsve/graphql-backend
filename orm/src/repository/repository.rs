@@ -1,13 +1,16 @@
-use crate::repository::entity::Entity;
+use std::collections::HashMap;
+
 use aws_sdk_dynamodb::error::SdkError;
 use aws_sdk_dynamodb::operation::delete_item::{DeleteItemError, DeleteItemOutput};
 use aws_sdk_dynamodb::operation::get_item::GetItemError;
 use aws_sdk_dynamodb::operation::put_item::{PutItemError, PutItemOutput};
+use aws_sdk_dynamodb::operation::query::{QueryError, QueryOutput};
 use aws_sdk_dynamodb::types::AttributeValue;
 use serde::Serialize;
-use serde_dynamo::{from_item, to_item};
-use std::collections::HashMap;
+use serde_dynamo::{to_item, Item};
 use thiserror::Error;
+
+use crate::repository::entity::Entity;
 
 #[derive(Error, Debug)]
 pub enum DynamoRepositoryError {
@@ -16,6 +19,8 @@ pub enum DynamoRepositoryError {
     #[error("Error deleting item")]
     DeleteItemError(#[from] SdkError<DeleteItemError>),
     #[error("Error getting item")]
+    QueryError(#[from] SdkError<QueryError>),
+    #[error("Error querying items")]
     GetItemError(#[from] SdkError<GetItemError>),
     #[error("Error deserializing item")]
     DeserializationError(#[from] serde_dynamo::Error),
@@ -23,7 +28,74 @@ pub enum DynamoRepositoryError {
     ItemNotFoundError,
 }
 
-pub trait RepositoryIndex: Send + Serialize {}
+#[derive(Debug)]
+pub struct QueryResult<E: Entity> {
+    pub items: Vec<E>,
+    pub last_evaluated_key: Option<LastEvaluatedKey>,
+}
+
+impl<E: Entity> TryFrom<QueryOutput> for QueryResult<E> {
+    type Error = DynamoRepositoryError;
+
+    fn try_from(query_output: QueryOutput) -> Result<Self, Self::Error> {
+        let items = query_output
+            .items
+            .ok_or(DynamoRepositoryError::ItemNotFoundError)?
+            .into_iter()
+            .map(|item| E::from_attribute_values(item))
+            .collect::<Result<Vec<E>, _>>()?;
+
+        Ok(QueryResult {
+            items,
+            last_evaluated_key: query_output.last_evaluated_key,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct QueryData<Index: RepositoryIndex> {
+    index: Index,
+    last_evaluated_key: Option<LastEvaluatedKey>,
+}
+
+struct ExpressionData {
+    key_condition_expression: String,
+    expression_attribute_values: HashMap<String, AttributeValue>,
+}
+
+pub type LastEvaluatedKey = HashMap<String, AttributeValue>;
+
+impl<Index: RepositoryIndex> QueryData<Index> {
+    pub fn new(index: Index, last_evaluated_key: Option<LastEvaluatedKey>) -> Self {
+        Self {
+            index,
+            last_evaluated_key,
+        }
+    }
+
+    pub fn get_expression_data(&self) -> ExpressionData {
+        let serialized: Item = to_item(&self.index).expect("Failed to serialize index");
+
+        let mut key_condition_expression = Vec::new();
+        let mut expression_attribute_values = HashMap::new();
+
+        for (key, value) in serialized.iter() {
+            key_condition_expression.push(format!("{} = :{}", key, key));
+            expression_attribute_values.insert(format!(":{}", key), value.clone().into());
+        }
+
+        ExpressionData {
+            key_condition_expression: key_condition_expression.join(" AND "),
+            expression_attribute_values,
+        }
+    }
+}
+
+pub trait RepositoryIndex: Send + Serialize + Clone {
+    fn to_key(&self) -> HashMap<String, AttributeValue> {
+        to_item(self).expect("Failed to serialize index")
+    }
+}
 
 #[async_trait::async_trait]
 pub trait DynamoRepository<E>: 'static + Sync
@@ -75,13 +147,13 @@ where
                 .get_client()
                 .get_item()
                 .table_name(self.get_table_name())
-                .set_key(Some(to_item(index)?))
+                .set_key(Some(index.to_key()))
                 .send()
                 .await
                 .map_err(|err| DynamoRepositoryError::from(err))?
                 .item
             {
-                Some(item) => Some(from_item::<HashMap<String, AttributeValue>, E>(item)?),
+                Some(item) => Some(E::from_attribute_values(item)?),
                 None => None,
             },
         )
@@ -92,8 +164,24 @@ where
             .await?
             .ok_or(DynamoRepositoryError::ItemNotFoundError)
     }
-    async fn find_all(&self) -> Result<Vec<E>, DynamoRepositoryError> {
-        todo!("Implement find_all method")
+
+    async fn query<Index: RepositoryIndex>(
+        &self,
+        query_data: QueryData<Index>,
+    ) -> Result<QueryResult<E>, DynamoRepositoryError> {
+        let expression_data = query_data.clone().get_expression_data();
+        Ok(self
+            .get_client()
+            .query()
+            .set_exclusive_start_key(query_data.last_evaluated_key.clone())
+            .set_expression_attribute_values(Some(expression_data.expression_attribute_values))
+            .key_condition_expression(expression_data.key_condition_expression)
+            .limit(1)
+            .table_name(self.get_table_name())
+            .send()
+            .await
+            .map_err(|err| DynamoRepositoryError::from(err))?
+            .try_into()?)
     }
 }
 

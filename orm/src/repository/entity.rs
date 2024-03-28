@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use aws_sdk_dynamodb::types::AttributeValue;
 use serde::{Deserialize, Serialize};
-use serde_dynamo::{to_item, Item};
-use std::collections::HashMap;
+use serde_dynamo::{from_item, to_item, Item};
 
 pub trait Entity: Serialize + for<'a> Deserialize<'a> + Send + 'static {
     type PrimaryKey;
@@ -10,6 +11,15 @@ pub trait Entity: Serialize + for<'a> Deserialize<'a> + Send + 'static {
     fn get_primary_key(&self) -> Self::PrimaryKey;
 
     fn get_index_fields(&self) -> Self::IndexFields;
+
+    fn from_attribute_values(
+        values: HashMap<String, AttributeValue>,
+    ) -> Result<Self, serde_dynamo::Error> {
+        let item: Item = values.into();
+        let entity: Self = from_item(item)?;
+
+        Ok(entity)
+    }
 
     fn serialize_primary_key(&self) -> HashMap<String, AttributeValue>
     where
@@ -44,7 +54,7 @@ pub trait Entity: Serialize + for<'a> Deserialize<'a> + Send + 'static {
         Self::PrimaryKey: Serialize,
         Self::IndexFields: Serialize,
     {
-        let mut serialized: Item = to_item(self).expect("Failed to serialize entity");
+        let serialized: Item = to_item(self).expect("Failed to serialize entity");
 
         let mut casted_entity: HashMap<String, AttributeValue> = serialized.into();
         let casted_primary_key: HashMap<String, AttributeValue> =
@@ -66,11 +76,13 @@ pub trait Entity: Serialize + for<'a> Deserialize<'a> + Send + 'static {
 // Unit test for serialization
 #[cfg(test)]
 mod test {
-    use crate::prelude::Entity;
+    use std::collections::HashMap;
+
     use aws_sdk_dynamodb::types::AttributeValue;
     use serde::{Deserialize, Serialize};
     use serde_dynamo::{to_item, Item};
-    use std::collections::HashMap;
+
+    use crate::prelude::Entity;
 
     #[derive(Serialize, Deserialize)]
     struct TestEntity {

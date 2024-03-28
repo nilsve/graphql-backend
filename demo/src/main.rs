@@ -1,9 +1,11 @@
+use aws_config::load_from_env;
+use aws_sdk_dynamodb::Client;
+
+use orm::prelude::*;
+
 use crate::repository::notes::entities::NoteEntity;
 use crate::repository::notes::repository::DynamoNotesRepository;
 use crate::repository::notes::service::NotesService;
-use aws_config::load_from_env;
-use aws_sdk_dynamodb::Client;
-use orm::prelude::*;
 
 mod repository;
 
@@ -24,17 +26,22 @@ async fn main() -> Result<(), DynamoRepositoryError> {
         .await
         .unwrap();
 
-    let result = service.find_by_id(2).await?;
+    service
+        .upsert(NoteEntity {
+            id: 1,
+            title: "Hello, world! 1".to_string(),
+            body: "This is another note".to_string(),
+        })
+        .await
+        .unwrap();
 
-    println!("{:?}", result);
+    let all = service.find_all_paged(None).await?;
 
-    // let notes = service.find()?;
-    // println!("Displaying {} notes", notes.len());
-    // for note in notes {
-    //     println!("{}", note.title);
-    //     println!("----------\n");
-    //     println!("{}", note.body);
-    // }
+    println!("{:?}", all);
+
+    let next = service.find_all().await?;
+
+    println!("{:?}", next);
 
     Ok(())
 }
