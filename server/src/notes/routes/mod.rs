@@ -8,11 +8,11 @@ use crate::notes::entities::{NewNoteEntity, NoteEntity};
 
 use crate::notes::service::NotesService;
 
-pub fn get_routes() -> Vec<actix_web::Scope> {
-    vec![actix_web::web::scope("/notes")
+pub fn get_routes() -> actix_web::Scope {
+    actix_web::web::scope("/notes")
         .service(get_notes)
         .service(get_note_by_id)
-        .service(create_note)]
+        .service(create_note)
 }
 
 // Actix route for retrieving all notes
@@ -21,7 +21,9 @@ pub fn get_routes() -> Vec<actix_web::Scope> {
 async fn get_notes(
     notes_service: Data<NotesService>,
 ) -> Result<Json<Vec<NoteEntity>>, DynamoRepositoryError> {
-    Ok(Json(notes_service.find_all().await?))
+    println!("Getting all notes");
+    let vec = notes_service.find_all().await.unwrap();
+    Ok(Json(vec))
 }
 
 #[api_operation()]

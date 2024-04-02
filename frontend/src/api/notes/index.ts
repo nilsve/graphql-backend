@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8080';//import.meta.env.API_URL;
+const API_URL = '/api';//import.meta.env.API_URL;
 
 export interface Note {
     id: string;

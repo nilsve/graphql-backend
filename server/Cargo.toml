@@ -15,6 +15,8 @@ serde = { version = "1.0.197", features = ["derive"] }
 apistos = { version = "0.1.7", features = ["extras", "qs_query"] }
 schemars = { package = "apistos-schemars", version = "0.8" }
 actix-cors = "0.7.0"
+actix-files = "0.6.5"
+env_logger = "0.11.3"
 [dependencies.uuid]
 version = "1.8.0"
 features = [
