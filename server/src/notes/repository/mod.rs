@@ -1,5 +1,6 @@
 use aws_sdk_dynamodb::Client;
 use serde::Serialize;
+use uuid::Uuid;
 
 use orm::prelude::{DynamoRepository, RepositoryIndex};
 
@@ -19,7 +20,7 @@ pub struct NotePrimaryIndex {
 }
 
 impl NotePrimaryIndex {
-    pub fn find_by_id(uuid: String) -> Self {
+    pub fn find_by_id(uuid: Uuid) -> Self {
         Self {
             pk: "NOTE".to_string(),
             sk: format!("NOTE_ID#{}", uuid),

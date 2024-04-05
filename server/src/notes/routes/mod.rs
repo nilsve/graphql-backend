@@ -1,8 +1,9 @@
 use actix_web::web::{Data, Json, Path};
-use actix_web::{get, post};
+use actix_web::{get, post, put};
 use apistos::api_operation;
+use uuid::Uuid;
 
-use orm::prelude::DynamoRepositoryError;
+use orm::prelude::{CrudService, DynamoRepositoryError};
 
 use crate::notes::entities::{NewNoteEntity, NoteEntity};
 
@@ -13,6 +14,7 @@ pub fn get_routes() -> actix_web::Scope {
         .service(get_notes)
         .service(get_note_by_id)
         .service(create_note)
+        .service(update_note)
 }
 
 // Actix route for retrieving all notes
@@ -21,19 +23,16 @@ pub fn get_routes() -> actix_web::Scope {
 async fn get_notes(
     notes_service: Data<NotesService>,
 ) -> Result<Json<Vec<NoteEntity>>, DynamoRepositoryError> {
-    println!("Getting all notes");
-    let vec = notes_service.find_all().await.unwrap();
-    Ok(Json(vec))
+    Ok(Json(notes_service.find_all().await?))
 }
 
 #[api_operation()]
 #[get("/{id}")]
 async fn get_note_by_id(
-    path: Path<String>,
+    path: Path<Uuid>,
     notes_service: Data<NotesService>,
 ) -> Json<Option<NoteEntity>> {
-    let uuid = path.into_inner();
-    Json(notes_service.find_by_id(uuid).await.unwrap())
+    Json(notes_service.find_by_id(path.into_inner()).await.unwrap())
 }
 
 #[post("")]
@@ -42,4 +41,15 @@ async fn create_note(
     notes_service: Data<NotesService>,
 ) -> Result<Json<NoteEntity>, DynamoRepositoryError> {
     Ok(Json(notes_service.create_note(&note).await?))
+}
+
+#[put("/{id}")]
+async fn update_note(
+    path: Path<Uuid>,
+    note: Json<NoteEntity>,
+    notes_service: Data<NotesService>,
+) -> Result<Json<NoteEntity>, DynamoRepositoryError> {
+    Ok(Json(
+        notes_service.update_note(path.into_inner(), &note).await?,
+    ))
 }

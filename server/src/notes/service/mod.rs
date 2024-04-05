@@ -1,6 +1,7 @@
 use orm::prelude::{
     CrudService, DynamoRepositoryError, LastEvaluatedKey, QueryData, QueryResult, RepositoryIndex,
 };
+use uuid::Uuid;
 
 use crate::notes::entities::{NewNoteEntity, NoteEntity};
 use crate::notes::repository::{DynamoNotesRepository, NotePrimaryIndex};
@@ -40,7 +41,7 @@ impl RepositoryIndex for QueryNoteIndex {}
 impl NotesService {
     pub async fn find_by_id(
         &self,
-        uuid: String,
+        uuid: Uuid,
     ) -> Result<Option<NoteEntity>, DynamoRepositoryError> {
         self.find(NotePrimaryIndex::find_by_id(uuid)).await
     }
@@ -68,5 +69,24 @@ impl NotesService {
         self.create(note.clone()).await?;
 
         Ok(note)
+    }
+
+    pub async fn update_note(
+        &self,
+        note_id: Uuid,
+        note: &NoteEntity,
+    ) -> Result<NoteEntity, DynamoRepositoryError> {
+        // Check if note exists
+        self.find(NotePrimaryIndex::find_by_id(note_id))
+            .await?
+            .ok_or(DynamoRepositoryError::ItemNotFoundError)?;
+
+        let entity = NoteEntity {
+            id: note_id,
+            ..note.clone()
+        };
+        self.upsert(entity.clone()).await?;
+
+        Ok(entity)
     }
 }
