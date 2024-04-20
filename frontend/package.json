@@ -13,13 +13,17 @@
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
+    "chakra-ui-markdown-renderer": "^4.1.0",
     "framer-motion": "^11.0.25",
     "localforage": "^1.10.0",
     "match-sorter": "^6.3.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-form": "^7.51.3",
+    "react-markdown": "^8.0.7",
     "react-router-dom": "^6.22.3",
-    "sort-by": "^1.2.0"
+    "react-textarea-autosize": "^8.5.3",
+    "sort-by": "^0.0.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",

@@ -8,12 +8,22 @@ export interface Note {
 
 export interface NewNote {
     title: string;
-    content: string;
+    body: string;
 }
 
 export const createNote = (note: NewNote): Promise<Note> => {
     return fetch(`${API_URL}/notes`, {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(note)
+    }).then((response) => response.json());
+}
+
+export const updateNote = (note: Note): Promise<Note> => {
+    return fetch(`${API_URL}/notes/${note.id}`, {
+        method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
         },
