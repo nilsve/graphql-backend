@@ -9,17 +9,22 @@ use env_logger::Env;
 use std::env;
 use std::path::PathBuf;
 
+use crate::ai::service::AiService;
 use orm::prelude::*;
 
 use crate::notes::repository::DynamoNotesRepository;
 use crate::notes::routes::get_routes;
 use crate::notes::service::NotesService;
 
+mod ai;
 mod notes;
 
 #[actix_web::main]
 async fn main() -> Result<(), DynamoRepositoryError> {
-    dotenv().unwrap();
+    match dotenv() {
+        Ok(_) => println!("Loaded .env file"),
+        Err(_) => println!("No .env file found"),
+    };
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
@@ -29,7 +34,8 @@ async fn main() -> Result<(), DynamoRepositoryError> {
     let client = Client::new(&config);
 
     let repository = DynamoNotesRepository::new(client);
-    let service = NotesService::new(repository);
+    let notes_service = NotesService::new(repository);
+    let ai_service = AiService::new();
 
     let path: PathBuf = env::var("FRONTEND_LOCATION")
         .unwrap_or_else(|_| "static".to_string())
@@ -46,7 +52,17 @@ async fn main() -> Result<(), DynamoRepositoryError> {
             frontend_path = Some(path_buf);
         }
         Err(_) => {
-            println!("Frontend not found at: {:?}. Not serving", path);
+            let path: PathBuf = "./static".into();
+
+            match path.canonicalize() {
+                Ok(path_buf) => {
+                    println!("Serving frontend from: {:?}", path_buf);
+                    frontend_path = Some(path_buf);
+                }
+                Err(_) => {
+                    println!("Frontend not found at: {:?}, or /static. Not serving", path);
+                }
+            }
         }
     }
 
@@ -55,7 +71,8 @@ async fn main() -> Result<(), DynamoRepositoryError> {
     // Start actix server
     actix_web::HttpServer::new(move || {
         let mut app = actix_web::App::new()
-            .app_data(actix_web::web::Data::new(service.clone()))
+            .app_data(actix_web::web::Data::new(notes_service.clone()))
+            .app_data(actix_web::web::Data::new(ai_service.clone()))
             .wrap(Logger::default())
             .wrap(Cors::permissive())
             .service(scope("/api").service(get_routes()));

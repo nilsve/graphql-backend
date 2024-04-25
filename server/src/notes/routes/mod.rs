@@ -3,6 +3,7 @@ use actix_web::{get, post, put};
 use apistos::api_operation;
 use uuid::Uuid;
 
+use crate::ai::service::AiService;
 use orm::prelude::{CrudService, DynamoRepositoryError};
 
 use crate::notes::entities::{NewNoteEntity, NoteEntity};
@@ -39,8 +40,9 @@ async fn get_note_by_id(
 async fn create_note(
     note: Json<NewNoteEntity>,
     notes_service: Data<NotesService>,
+    ai_service: Data<AiService>,
 ) -> Result<Json<NoteEntity>, DynamoRepositoryError> {
-    Ok(Json(notes_service.create_note(&note).await?))
+    Ok(Json(notes_service.create_note(&note, ai_service).await?))
 }
 
 #[put("/{id}")]
@@ -48,8 +50,11 @@ async fn update_note(
     path: Path<Uuid>,
     note: Json<NoteEntity>,
     notes_service: Data<NotesService>,
+    ai_service: Data<AiService>,
 ) -> Result<Json<NoteEntity>, DynamoRepositoryError> {
     Ok(Json(
-        notes_service.update_note(path.into_inner(), &note).await?,
+        notes_service
+            .update_note(path.into_inner(), &note, ai_service)
+            .await?,
     ))
 }

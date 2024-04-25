@@ -1,3 +1,5 @@
+use crate::ai::service::AiService;
+use actix_web::web::Data;
 use orm::prelude::{
     CrudService, DynamoRepositoryError, LastEvaluatedKey, QueryData, QueryResult, RepositoryIndex,
 };
@@ -9,12 +11,6 @@ use crate::notes::repository::{DynamoNotesRepository, NotePrimaryIndex};
 #[derive(Clone)]
 pub struct NotesService {
     repository: DynamoNotesRepository,
-}
-
-impl NotesService {
-    pub fn new(repository: DynamoNotesRepository) -> Self {
-        Self { repository }
-    }
 }
 
 impl CrudService<NoteEntity, DynamoNotesRepository> for NotesService {
@@ -39,6 +35,10 @@ impl QueryNoteIndex {
 impl RepositoryIndex for QueryNoteIndex {}
 
 impl NotesService {
+    pub fn new(repository: DynamoNotesRepository) -> Self {
+        Self { repository }
+    }
+
     pub async fn find_by_id(
         &self,
         uuid: Uuid,
@@ -64,9 +64,14 @@ impl NotesService {
     pub async fn create_note(
         &self,
         note: &NewNoteEntity,
+        ai_service: Data<AiService>,
     ) -> Result<NoteEntity, DynamoRepositoryError> {
         let note: NoteEntity = note.to_owned().into();
         self.create(note.clone()).await?;
+
+        let encoded_note = ai_service.encode(note.clone()).await;
+
+        self.upsert(encoded_note).await?;
 
         Ok(note)
     }
@@ -75,6 +80,7 @@ impl NotesService {
         &self,
         note_id: Uuid,
         note: &NoteEntity,
+        ai_service: Data<AiService>,
     ) -> Result<NoteEntity, DynamoRepositoryError> {
         // Check if note exists
         self.find(NotePrimaryIndex::find_by_id(note_id))
@@ -85,7 +91,12 @@ impl NotesService {
             id: note_id,
             ..note.clone()
         };
+
         self.upsert(entity.clone()).await?;
+
+        let encoded_note = ai_service.encode(entity.clone()).await;
+
+        self.upsert(encoded_note).await?;
 
         Ok(entity)
     }

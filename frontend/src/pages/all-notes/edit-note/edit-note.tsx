@@ -1,12 +1,11 @@
-import {useNavigate, useParams} from "react-router-dom";
-import React, {useCallback, useEffect, useState} from "react";
-import {getNote, Note, updateNote} from "../../../api/notes";
-import {NoteComponent} from "../note";
-import {SubmitHandler} from "react-hook-form";
-import {Modal, ModalContent, ModalOverlay} from "@chakra-ui/react";
+import { useNavigate, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { getNote, Note, updateNote } from '../../../api/notes';
+import { NoteComponent } from '../note';
+import { SubmitHandler } from 'react-hook-form';
 
 export const EditNote: React.FC = () => {
-    const {noteId} = useParams<{ noteId: string }>();
+    const { noteId } = useParams<{ noteId: string }>();
 
     const navigate = useNavigate();
 
@@ -26,13 +25,13 @@ export const EditNote: React.FC = () => {
     const handleUpdateNote: SubmitHandler<Note> = useCallback(async (note: Note) => {
         await updateNote(note);
         navigate('/', {
-            replace: true,
+            replace: true
         });
     }, [updateNote]);
 
     const handleCancel = useCallback(() => {
         navigate('/', {
-            replace: true,
+            replace: true
         });
     }, []);
 
@@ -41,11 +40,6 @@ export const EditNote: React.FC = () => {
     }
 
     return (
-        <Modal size={'xxl'} isOpen={true} onClose={handleCancel}>
-            <ModalOverlay/>
-            <ModalContent>
-                <NoteComponent note={note} editData={{onNoteUpdate: handleUpdateNote, onCancel: handleCancel}}/>
-            </ModalContent>
-        </Modal>
+        <NoteComponent note={note} editData={{ onNoteUpdate: handleUpdateNote, onCancel: handleCancel }} />
     );
 }

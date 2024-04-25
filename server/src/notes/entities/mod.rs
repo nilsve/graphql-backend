@@ -1,4 +1,5 @@
 use apistos::ApiComponent;
+use rust_bert::pipelines::sentence_embeddings::Embedding;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -10,6 +11,7 @@ pub struct NoteEntity {
     pub id: Uuid,
     pub title: String,
     pub body: String,
+    pub encoded: Option<Vec<Embedding>>,
     // created_at: NaiveDateTime,
 }
 
@@ -25,6 +27,7 @@ impl From<NewNoteEntity> for NoteEntity {
             id: Uuid::new_v4(),
             title: new_note.title,
             body: new_note.body,
+            encoded: None,
         }
     }
 }
