@@ -21,6 +21,7 @@ mod notes;
 
 #[actix_web::main]
 async fn main() -> Result<(), DynamoRepositoryError> {
+    println!("Starting server...");
     match dotenv() {
         Ok(_) => println!("Loaded .env file"),
         Err(_) => println!("No .env file found"),
@@ -66,7 +67,7 @@ async fn main() -> Result<(), DynamoRepositoryError> {
         }
     }
 
-    println!("Starting server...");
+    println!("Starting web server...");
 
     // Start actix server
     actix_web::HttpServer::new(move || {
@@ -83,11 +84,11 @@ async fn main() -> Result<(), DynamoRepositoryError> {
 
         app
     })
-    .bind(("0.0.0.0", 8080))
-    .unwrap()
-    .run()
-    .await
-    .unwrap();
+        .bind(("0.0.0.0", 8080))
+        .unwrap()
+        .run()
+        .await
+        .unwrap();
 
     Ok(())
 }

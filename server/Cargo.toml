@@ -3,8 +3,11 @@ name = "server"
 version = "0.1.0"
 edition = "2021"
 
+[env]
+LIBTORCH = "/home/nils/Downloads/libtorch-cxx11-abi-shared-with-deps-2.2.0+cu121/libtorch"
+
 [dependencies]
-rust-bert = { version = "0.22.0", features = ["download-libtorch"] }
+rust-bert = { version = "0.22.0" }
 weaviate-community = "0.2.2"
 dotenvy = "0.15"
 chrono = { version = "0.4.31", features = [] }

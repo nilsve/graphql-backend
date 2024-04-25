@@ -72,10 +72,6 @@ impl BertServiceRunner {
     fn runner(self, receiver: Receiver<Message>) -> Result<(), ()> {
         println!("AI service runner started");
 
-        let model = SentenceEmbeddingsBuilder::remote(SentenceEmbeddingsModelType::AllMiniLmL12V2)
-            .create_model()
-            .unwrap();
-
         println!("AI model created");
 
         while let Ok((request, response)) = receiver.recv() {
@@ -83,7 +79,7 @@ impl BertServiceRunner {
                 RequestMessage::EncodeNote(note) => {
                     println!("Encoding note {:?}", note.id);
                     let start = Instant::now();
-                    let embeddings = model
+                    let embeddings = self.sentence_embeddings_model
                         .encode(&vec![note.title.clone(), note.body.clone()].to_vec())
                         .unwrap();
 
