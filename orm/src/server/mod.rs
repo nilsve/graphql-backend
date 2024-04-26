@@ -1,28 +1,29 @@
 use std::fmt::{Display, Formatter};
-use actix_web::ResponseError;
-use anyhow::Error;
+use actix_web::http::StatusCode;
+use actix_web::{HttpResponse, ResponseError};
 
 use crate::prelude::DynamoRepositoryError;
 
 impl ResponseError for DynamoRepositoryError {}
 
-pub type ActixAnyhow<T> = Result<T, ActixAnyhowError>;
 
-#[derive(Debug)]
-pub struct ActixAnyhowError {
-    err: anyhow::Error,
+#[derive(thiserror::Error, Debug)]
+pub enum ActixAnyhowError {
+    #[error("an unspecified internal error occurred: {0}")]
+    InternalError(#[from] anyhow::Error),
 }
 
-impl Display for ActixAnyhowError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        format!("{}", self.err).fmt(f)
+impl ResponseError for ActixAnyhowError {
+    fn status_code(&self) -> StatusCode {
+        match &self {
+            Self::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+
+    fn error_response(&self) -> HttpResponse {
+        HttpResponse::build(self.status_code()).body(self.to_string())
     }
 }
 
-impl ResponseError for ActixAnyhowError {}
-
-impl From<anyhow::Error> for ActixAnyhowError {
-    fn from(value: Error) -> Self {
-        Self { err: value }
-    }
-}
+// Short hand alias, which allows you to use just Result<T>
+pub type ActixAnyhow<T> = std::result::Result<T, ActixAnyhowError>;

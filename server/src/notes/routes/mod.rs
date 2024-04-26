@@ -1,10 +1,10 @@
 use actix_web::web::{Data, Json, Path};
-use actix_web::{get, post, put};
+use actix_web::{delete, get, post, put};
 use apistos::api_operation;
 use uuid::Uuid;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
-use orm::prelude::{DynamoRepositoryError};
+use orm::prelude::{CrudService, DynamoRepositoryError};
 use orm::server::ActixAnyhow;
 use crate::ai::service::encoder::SentenceEncoderService;
 use crate::ai::service::weaviate::WeaviateService;
@@ -20,6 +20,7 @@ pub fn get_routes() -> actix_web::Scope {
         .service(get_note_by_id)
         .service(create_note)
         .service(update_note)
+        .service(delete_note_by_id)
 }
 
 // Actix route for retrieving all notes
@@ -37,13 +38,28 @@ async fn get_notes(
     }).collect()))
 }
 
-#[api_operation()]
 #[get("/{id}")]
 async fn get_note_by_id(
     path: Path<Uuid>,
     notes_service: Data<NotesService>,
 ) -> Json<Option<NoteDTO>> {
     Json(notes_service.find_by_id(path.into_inner()).await.unwrap().map(|note| note.into()))
+}
+
+#[delete("/{id}")]
+async fn delete_note_by_id(
+    path: Path<Uuid>,
+    notes_service: Data<NotesService>,
+    weaviate_service: Data<WeaviateService>,
+) -> ActixAnyhow<Json<NoteDTO>> {
+    let note = notes_service.find_by_id(path.into_inner()).await.map_err(anyhow::Error::from)?;
+
+    if let Some(note) = &note {
+        notes_service.delete(note.clone()).await.map_err(anyhow::Error::from)?;
+        weaviate_service.delete_note(note).await.map_err(anyhow::Error::from)?;
+    }
+
+    Ok(Json(note.map(|note| note.into()).unwrap()))
 }
 
 #[post("")]

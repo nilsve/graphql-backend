@@ -169,11 +169,20 @@ impl WeaviateService {
         // let notes = self.client.query.
     }
 
+    pub async fn delete_note(
+        &self,
+        note: &NoteEntity,
+    ) -> Result<(), WeaviateServiceError> {
+        self.client.objects.delete(NOTE_CLASS, &note.id, None, None).await?;
+
+        Ok(())
+    }
+
     pub async fn update_note(
         &self,
         note: &NoteEntity,
     ) -> Result<(), WeaviateServiceError> {
-        match self.client.objects.delete(NOTE_CLASS, &note.id, None, None).await {
+        match self.delete_note(note).await {
             Ok(_) => println!("Successfully deleted item for updating {:?}", note.id),
             Err(_) => println!("Coudln't delete item for updating {:?}", note.id)
         };

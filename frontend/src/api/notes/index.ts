@@ -21,6 +21,13 @@ export const createNote = (note: NewNote): Promise<Note> => {
     }).then((response) => response.json());
 }
 
+export const deleteNote = (note: Note): Promise<void> => {
+    return fetch(`${API_URL}/notes/${note.id}`, {
+        method: 'DELETE'
+    }).then(() => {
+    });
+}
+
 export const updateNote = (note: Note): Promise<Note> => {
     return fetch(`${API_URL}/notes/${note.id}`, {
         method: 'PUT',

@@ -21,7 +21,7 @@ impl ChatGptService {
             starting_message.push_str(&format!("TITLE: {}, BODY: {}", note.title.clone(), note.body.clone()));
         }
 
-        starting_message.push_str("\nHere comes the question:");
+        starting_message.push_str("\nReply in Markdown format. Here comes the question:\n");
 
         let mut conversation = self.client.new_conversation_directed(starting_message);
 

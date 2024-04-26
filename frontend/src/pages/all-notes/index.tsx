@@ -8,8 +8,10 @@ import {
 import {SearchNoteComponent} from './search';
 import {CreateNote} from './create-note/create-note.tsx';
 import {NotePreview} from './note-preview';
+import {useLocation} from "react-router-dom";
 
 export const AllNotes: React.FC = () => {
+    const {pathname} = useLocation()
     const [notes, setNotes] = useState<Note[]>([]);
 
     useEffect(() => {
@@ -17,7 +19,7 @@ export const AllNotes: React.FC = () => {
             const result = await listAllNotes();
             setNotes(result);
         })();
-    }, []);
+    }, [pathname]);
 
     return (
         <Box w={'100%'}>

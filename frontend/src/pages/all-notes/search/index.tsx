@@ -1,7 +1,9 @@
 import React, {useCallback, useState} from "react";
-import {Box, Input, Card, Text} from "@chakra-ui/react";
+import {Box, Input, Card} from "@chakra-ui/react";
 import {SubmitHandler, useForm} from "react-hook-form";
 import {askQuestion} from "../../../api/notes";
+import ReactMarkdown from "react-markdown";
+import ChakraUIRenderer from "chakra-ui-markdown-renderer";
 
 interface QuestionForm {
     question: ''
@@ -9,6 +11,7 @@ interface QuestionForm {
 
 export const SearchNoteComponent: React.FC = () => {
     const [answer, setAnswer] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const {register, handleSubmit} = useForm<QuestionForm>({
         defaultValues: {
             question: ''
@@ -16,10 +19,16 @@ export const SearchNoteComponent: React.FC = () => {
     });
 
     const onSearch: SubmitHandler<QuestionForm> = useCallback(async ({question}) => {
-        const response = await askQuestion(question);
+        setIsLoading(true);
+        setAnswer('');
+        try {
+            const response = await askQuestion(question);
+            setAnswer(response.answer);
 
-        setAnswer(response.answer);
-    }, []);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [setIsLoading, setAnswer]);
 
     return (
         <Box mb={4}>
@@ -28,9 +37,18 @@ export const SearchNoteComponent: React.FC = () => {
             </form>
 
             {
+                isLoading && (
+                    <Box mt={4}>
+                        Loading...
+                    </Box>
+                )
+            }
+            {
                 answer && (
                     <Box mt={4} textAlign={'center'}>
-                        <Card p={4}><Text>{answer}</Text></Card>
+                        <Card p={4}>
+                            <ReactMarkdown components={ChakraUIRenderer()}>{answer}</ReactMarkdown>
+                        </Card>
                     </Box>
                 )
             }

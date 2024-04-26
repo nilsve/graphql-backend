@@ -1,11 +1,11 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import React, { useCallback, useEffect, useState } from 'react';
-import { getNote, Note, updateNote } from '../../../api/notes';
-import { NoteComponent } from '../note';
-import { SubmitHandler } from 'react-hook-form';
+import {useNavigate, useParams} from 'react-router-dom';
+import React, {useCallback, useEffect, useState} from 'react';
+import {deleteNote, getNote, Note, updateNote} from '../../../api/notes';
+import {NoteComponent} from '../note';
+import {SubmitHandler} from 'react-hook-form';
 
 export const EditNote: React.FC = () => {
-    const { noteId } = useParams<{ noteId: string }>();
+    const {noteId} = useParams<{ noteId: string }>();
 
     const navigate = useNavigate();
 
@@ -20,14 +20,21 @@ export const EditNote: React.FC = () => {
             const result = await getNote(noteId);
             setNote(result);
         })();
-    }, [noteId]);
+    }, [noteId, setNote]);
 
     const handleUpdateNote: SubmitHandler<Note> = useCallback(async (note: Note) => {
         await updateNote(note);
         navigate('/', {
             replace: true
         });
-    }, [updateNote]);
+    }, [navigate]);
+
+    const handleDeleteNote: SubmitHandler<Note> = useCallback(async (note: Note) => {
+        await deleteNote(note);
+        navigate('/', {
+            replace: true,
+        })
+    }, [navigate]);
 
     const handleCancel = useCallback(() => {
         navigate('/', {
@@ -40,6 +47,10 @@ export const EditNote: React.FC = () => {
     }
 
     return (
-        <NoteComponent note={note} editData={{ onNoteUpdate: handleUpdateNote, onCancel: handleCancel }} />
+        <NoteComponent note={note} editData={{
+            onNoteUpdate: handleUpdateNote,
+            onCancel: handleCancel,
+            onNoteDelete: handleDeleteNote
+        }}/>
     );
 }
