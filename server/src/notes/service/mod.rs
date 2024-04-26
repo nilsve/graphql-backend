@@ -1,9 +1,10 @@
-use crate::ai::service::AiService;
 use actix_web::web::Data;
 use orm::prelude::{
     CrudService, DynamoRepositoryError, LastEvaluatedKey, QueryData, QueryResult, RepositoryIndex,
 };
 use uuid::Uuid;
+use crate::ai::service::encoder::SentenceEncoderService;
+use crate::ai::service::weaviate::WeaviateService;
 
 use crate::notes::entities::{NoteEntity};
 use crate::notes::models::NewNoteDTO;
@@ -65,14 +66,17 @@ impl NotesService {
     pub async fn create_note(
         &self,
         note: &NewNoteDTO,
-        ai_service: Data<AiService>,
-    ) -> Result<NoteEntity, DynamoRepositoryError> {
+        ai_service: Data<SentenceEncoderService>,
+        weaviate_service: Data<WeaviateService>,
+    ) -> Result<NoteEntity, anyhow::Error> {
         let note: NoteEntity = note.to_owned().into();
         self.create(note.clone()).await?;
 
-        let encoded_note = ai_service.encode(note.clone()).await;
+        let note = ai_service.encode_note(note.clone()).await;
 
-        self.upsert(encoded_note).await?;
+        weaviate_service.insert_note(&note).await?;
+
+        self.upsert(note.clone()).await?;
 
         Ok(note)
     }
@@ -81,8 +85,9 @@ impl NotesService {
         &self,
         note_id: Uuid,
         note: &NoteEntity,
-        ai_service: Data<AiService>,
-    ) -> Result<NoteEntity, DynamoRepositoryError> {
+        ai_service: Data<SentenceEncoderService>,
+        weaviate_service: Data<WeaviateService>,
+    ) -> Result<NoteEntity, anyhow::Error> {
         // Check if note exists
         self.find(NotePrimaryIndex::find_by_id(note_id))
             .await?
@@ -95,9 +100,11 @@ impl NotesService {
 
         self.upsert(entity.clone()).await?;
 
-        let encoded_note = ai_service.encode(entity.clone()).await;
+        let note = ai_service.encode_note(entity.clone()).await;
 
-        self.upsert(encoded_note).await?;
+        weaviate_service.update_note(&note).await?;
+
+        self.upsert(note).await?;
 
         Ok(entity)
     }

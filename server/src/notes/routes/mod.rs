@@ -2,10 +2,13 @@ use actix_web::web::{Data, Json, Path};
 use actix_web::{get, post, put};
 use apistos::api_operation;
 use uuid::Uuid;
+use anyhow::Result;
 
-use crate::ai::service::AiService;
 use orm::prelude::{DynamoRepositoryError};
-use crate::helpers::{Truncatable, TruncatedString};
+use orm::server::ActixAnyhow;
+use crate::ai::service::encoder::SentenceEncoderService;
+use crate::ai::service::weaviate::WeaviateService;
+use crate::helpers::{Truncatable};
 
 use crate::notes::models::{NewNoteDTO, NoteDTO};
 
@@ -47,9 +50,10 @@ async fn get_note_by_id(
 async fn create_note(
     note: Json<NewNoteDTO>,
     notes_service: Data<NotesService>,
-    ai_service: Data<AiService>,
-) -> Result<Json<NoteDTO>, DynamoRepositoryError> {
-    Ok(Json(notes_service.create_note(&note, ai_service).await?.into()))
+    ai_service: Data<SentenceEncoderService>,
+    weaviate_service: Data<WeaviateService>,
+) -> ActixAnyhow<Json<NoteDTO>> {
+    Ok(Json(notes_service.create_note(&note, ai_service, weaviate_service).await?.into()))
 }
 
 #[put("/{id}")]
@@ -57,11 +61,12 @@ async fn update_note(
     path: Path<Uuid>,
     note: Json<NoteDTO>,
     notes_service: Data<NotesService>,
-    ai_service: Data<AiService>,
-) -> Result<Json<NoteDTO>, DynamoRepositoryError> {
+    ai_service: Data<SentenceEncoderService>,
+    weaviate_service: Data<WeaviateService>,
+) -> ActixAnyhow<Json<NoteDTO>> {
     Ok(Json(
         notes_service
-            .update_note(path.into_inner(), &note.into_inner().into(), ai_service)
+            .update_note(path.into_inner(), &note.into_inner().into(), ai_service, weaviate_service)
             .await?.into(),
     ))
 }

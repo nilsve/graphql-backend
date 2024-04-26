@@ -11,7 +11,7 @@ pub struct NoteEntity {
     pub id: Uuid,
     pub title: String,
     pub body: String,
-    pub encoded: Option<Vec<Embedding>>,
+    pub encoded: Option<Embedding>,
     // created_at: NaiveDateTime,
 }
 

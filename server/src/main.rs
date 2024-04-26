@@ -9,8 +9,9 @@ use env_logger::Env;
 use std::env;
 use std::path::PathBuf;
 
-use crate::ai::service::AiService;
 use orm::prelude::*;
+use crate::ai::service::encoder::SentenceEncoderService;
+use crate::ai::service::weaviate::WeaviateService;
 
 use crate::notes::repository::DynamoNotesRepository;
 use crate::notes::routes::get_routes;
@@ -37,7 +38,8 @@ async fn main() -> Result<(), DynamoRepositoryError> {
 
     let repository = DynamoNotesRepository::new(client);
     let notes_service = NotesService::new(repository);
-    let ai_service = AiService::new();
+    let ai_service = SentenceEncoderService::new();
+    let weaviate_service = WeaviateService::new().await.unwrap();
 
     let path: PathBuf = env::var("FRONTEND_LOCATION")
         .unwrap_or_else(|_| "static".to_string())
@@ -75,6 +77,7 @@ async fn main() -> Result<(), DynamoRepositoryError> {
         let mut app = actix_web::App::new()
             .app_data(actix_web::web::Data::new(notes_service.clone()))
             .app_data(actix_web::web::Data::new(ai_service.clone()))
+            .app_data(actix_web::web::Data::new(weaviate_service.clone()))
             .wrap(Logger::default())
             .wrap(Cors::permissive())
             .service(scope("/api").service(get_routes()));
@@ -92,4 +95,46 @@ async fn main() -> Result<(), DynamoRepositoryError> {
         .unwrap();
 
     Ok(())
+}
+
+// Unit test
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+    use uuid::Uuid;
+    use crate::ai::service::encoder::SentenceEncoderService;
+    use crate::ai::service::weaviate::WeaviateService;
+    use crate::notes::entities::NoteEntity;
+
+    // Create test for updating weaviate object
+    #[tokio::test]
+    async fn test_update_note() {
+        // Create a new note
+        let note = NoteEntity {
+            id: Uuid::from_str("5e9177dc-fd5b-4db5-b1e5-f108cd84a93c").unwrap(),
+            title: "title".to_string(),
+            body: "content".to_string(),
+            encoded: None,
+        };
+
+        // Create a new weaviate service
+        let weaviate_service = WeaviateService::new().await.unwrap();
+
+        // Update the note
+        let result = weaviate_service.all_notes().await.unwrap();
+
+        println!("Result: {:?}", result);
+    }
+
+    #[tokio::test]
+    async fn test_querying() {
+        let encoding_service = SentenceEncoderService::new();
+        let weaviate_service = WeaviateService::new().await.unwrap();
+
+        let question = encoding_service.encode_string("What is the secret password?".to_string()).await;
+
+        let result = weaviate_service.query_notes(question).await.unwrap();
+
+        println!("Result: {:?}", result);
+    }
 }

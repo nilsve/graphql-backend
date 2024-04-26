@@ -1,0 +1,163 @@
+use std::error::Error;
+use std::sync::Arc;
+use rust_bert::pipelines::sentence_embeddings::Embedding;
+use serde::Serialize;
+use serde_json::Value;
+use thiserror::Error;
+use uuid::Uuid;
+use weaviate_community::collections::objects::{MultiObjects, Object, ObjectListParameters};
+use weaviate_community::collections::query::{ExploreQuery, GetQuery};
+use weaviate_community::collections::schema::{Class, Properties, Property};
+use weaviate_community::WeaviateClient;
+use crate::notes::entities::NoteEntity;
+
+const NOTE_CLASS: &str = "Note";
+
+#[derive(Error, Debug)]
+pub enum WeaviateServiceError {
+    #[error("Weaviate client error")]
+    WeaviateClientError
+}
+
+impl From<Box<dyn Error>> for WeaviateServiceError {
+    fn from(_error: Box<dyn Error>) -> Self {
+        WeaviateServiceError::WeaviateClientError
+    }
+}
+
+#[derive(Clone)]
+pub struct WeaviateService {
+    client: Arc<WeaviateClient>,
+}
+
+pub trait FromEmbeddingToF64 {
+    fn to_f64_vec(&self) -> Vec<f64>;
+}
+
+impl FromEmbeddingToF64 for &Embedding {
+    fn to_f64_vec(&self) -> Vec<f64> {
+        self.iter().map(|value| *value as f64).collect()
+    }
+}
+
+#[derive(Serialize, Debug)]
+struct WeaviateVectorQuery {
+    vector: Vec<f64>,
+
+}
+
+impl From<&NoteEntity> for Object {
+    fn from(note: &NoteEntity) -> Self {
+        let mut builder = Object::builder(NOTE_CLASS, note.into())
+            .with_id(note.id);
+
+        if let Some(vector) = &note.encoded {
+            builder = builder.with_vector(vector.to_f64_vec());
+        }
+
+        builder.build()
+    }
+}
+
+impl From<&NoteEntity> for Value {
+    fn from(note: &NoteEntity) -> Self {
+        serde_json::json!({
+            "title": &note.title,
+            "content": &note.body,
+        })
+    }
+}
+
+impl WeaviateService {
+    pub async fn new() -> Result<Self, WeaviateServiceError> {
+        println!("Creating Weaviate service");
+        let client = WeaviateClient::builder("http://localhost:8081").build()?;
+
+        let service = Self {
+            client: Arc::new(client),
+        };
+
+        service.setup_database().await?;
+
+        Ok(service)
+    }
+
+    pub async fn insert_note(
+        &self,
+        note: &NoteEntity,
+    ) -> Result<(), WeaviateServiceError> {
+        self.client.objects.create(&(note.into()), None).await?;
+
+        Ok(())
+    }
+
+    pub async fn find_note(
+        &self,
+        note_id: &Uuid,
+    ) -> Result<Object, WeaviateServiceError> {
+        let note = self.client.objects.get(NOTE_CLASS, note_id, None, None, None).await?;
+
+        Ok(note)
+    }
+
+    pub async fn all_notes(&self) -> Result<MultiObjects, WeaviateServiceError> {
+        let notes = self.client.objects.list(ObjectListParameters::builder().with_include("vector").with_class_name(NOTE_CLASS).build()).await?;
+
+        Ok(notes)
+    }
+
+    pub async fn query_notes(
+        &self,
+        query_vector: Embedding,
+    ) -> Result<Value, WeaviateServiceError> {
+        let query_data = serde_json::to_string(&WeaviateVectorQuery {
+            vector: (&query_vector).to_f64_vec(),
+        }).unwrap().replace("\"", "");
+
+        let query = ExploreQuery::builder()
+            .with_limit(1)
+            .with_near_vector(&query_data)
+            .with_fields(vec!["beacon", "certainty", "distance", "className"])
+            .build();
+
+        let res = self.client.query.explore(query).await?;
+
+        Ok(res)
+        // let notes = self.client.query.
+    }
+
+    pub async fn update_note(
+        &self,
+        note: &NoteEntity,
+    ) -> Result<(), WeaviateServiceError> {
+        self.client.objects.delete(NOTE_CLASS, &note.id, None, None).await?;
+
+        self.insert_note(note).await?;
+
+        Ok(())
+    }
+
+    async fn setup_database(&self) -> Result<(), WeaviateServiceError> {
+        let schema = self.client.schema.get().await?;
+
+        if !schema.classes.iter().any(|class| class.class == NOTE_CLASS) {
+            println!("Creating Note class");
+            let note_class = Class::builder(NOTE_CLASS)
+                .with_properties(Properties::new(vec![
+                    Property::builder("title", vec!["text"]).build(),
+                    Property::builder("content", vec!["text"]).build(),
+                ]))
+                .build();
+
+            self.client.schema.create_class(&note_class).await?;
+        } else {
+            println!("Note class already exists");
+        }
+
+        Ok(())
+    }
+
+    pub fn get_client(&self) -> Arc<WeaviateClient> {
+        self.client.clone()
+    }
+}
