@@ -1,27 +1,40 @@
-import React from "react";
-import {Box, Input} from "@chakra-ui/react";
+import React, {useCallback, useState} from "react";
+import {Box, Input, Card, Text} from "@chakra-ui/react";
 import {SubmitHandler, useForm} from "react-hook-form";
+import {askQuestion} from "../../../api/notes";
 
-export interface SearchForm {
-    searchText: string;
+interface QuestionForm {
+    question: ''
 }
 
-interface Props {
-    onSearch: SubmitHandler<SearchForm>;
-}
-
-export const SearchNoteComponent: React.FC<Props> = ({onSearch}) => {
-    const {register, handleSubmit} = useForm<SearchForm>({
+export const SearchNoteComponent: React.FC = () => {
+    const [answer, setAnswer] = useState('');
+    const {register, handleSubmit} = useForm<QuestionForm>({
         defaultValues: {
-            searchText: ''
+            question: ''
         }
     });
+
+    const onSearch: SubmitHandler<QuestionForm> = useCallback(async ({question}) => {
+        const response = await askQuestion(question);
+
+        setAnswer(response.answer);
+    }, []);
 
     return (
         <Box mb={4}>
             <form onSubmit={handleSubmit(onSearch)}>
-                <Input placeholder='Search Notes' {...register('searchText')}/>
+                <Input placeholder='Ask a question' {...register('question')}/>
             </form>
+
+            {
+                answer && (
+                    <Box mt={4} textAlign={'center'}>
+                        <Card p={4}><Text>{answer}</Text></Card>
+                    </Box>
+                )
+            }
+
         </Box>
     );
 }

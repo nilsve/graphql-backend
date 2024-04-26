@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::sync::Arc;
 use rust_bert::pipelines::sentence_embeddings::Embedding;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 use uuid::Uuid;
@@ -10,6 +10,7 @@ use weaviate_community::collections::query::{ExploreQuery, GetQuery};
 use weaviate_community::collections::schema::{Class, Properties, Property};
 use weaviate_community::WeaviateClient;
 use crate::notes::entities::NoteEntity;
+use crate::notes::service::NotesService;
 
 const NOTE_CLASS: &str = "Note";
 
@@ -41,9 +42,42 @@ impl FromEmbeddingToF64 for &Embedding {
 }
 
 #[derive(Serialize, Debug)]
-struct WeaviateVectorQuery {
+struct ExploreQueryParams {
     vector: Vec<f64>,
+}
 
+#[derive(Deserialize, Debug)]
+pub struct ExploreQueryResultDataItem {
+    beacon: String,
+    certainty: f64,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ExploreQueryResultData {
+    #[allow(non_snake_case)]
+    Explore: Vec<ExploreQueryResultDataItem>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ExploreQueryResult {
+    data: ExploreQueryResultData,
+}
+
+impl ExploreQueryResult {
+    pub async fn get_notes(&self, notes_service: &NotesService) -> anyhow::Result<Vec<NoteEntity>> {
+        let mut result = Vec::new();
+
+        for item in &self.data.Explore {
+            let splitted = &item.beacon.split("/").collect::<Vec<&str>>();
+            let input = splitted.get(splitted.len() - 1).expect("No uuid found");
+            let id = Uuid::parse_str(input).unwrap();
+
+            let note_entity = notes_service.find_by_id(id).await.unwrap().expect("Weaviate returned non existing note!");
+            result.push(note_entity);
+        }
+
+        Ok(result)
+    }
 }
 
 impl From<&NoteEntity> for Object {
@@ -109,20 +143,22 @@ impl WeaviateService {
     pub async fn query_notes(
         &self,
         query_vector: Embedding,
-    ) -> Result<Value, WeaviateServiceError> {
-        let query_data = serde_json::to_string(&WeaviateVectorQuery {
+    ) -> Result<ExploreQueryResult, WeaviateServiceError> {
+        let query_data = serde_json::to_string(&ExploreQueryParams {
             vector: (&query_vector).to_f64_vec(),
         }).unwrap().replace("\"", "");
 
         let query = ExploreQuery::builder()
-            .with_limit(2)
+            .with_limit(5)
             .with_near_vector(&query_data)
-            .with_fields(vec!["beacon", "certainty", "distance", "className"])
+            .with_fields(vec!["beacon", "certainty"])
             .build();
 
-        let res = self.client.query.explore(query).await?;
+        let json_value = self.client.query.explore(query).await?;
 
-        Ok(res)
+        let deserialized: ExploreQueryResult = serde_json::from_value(json_value).unwrap();
+
+        Ok(deserialized)
         // let notes = self.client.query.
     }
 

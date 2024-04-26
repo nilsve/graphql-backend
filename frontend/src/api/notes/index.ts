@@ -42,3 +42,21 @@ export const getNote = (id: string): Promise<Note> => {
         method: 'GET'
     }).then((response) => response.json());
 }
+
+interface Answer {
+    answer: string;
+}
+
+export const askQuestion = async (question: string): Promise<Answer> => {
+    const response = await fetch(`${API_URL}/ai`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            question
+        })
+    });
+
+    return response.json();
+}
