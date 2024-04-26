@@ -1,3 +1,4 @@
+use std::env;
 use std::error::Error;
 use std::sync::Arc;
 use rust_bert::pipelines::sentence_embeddings::Embedding;
@@ -7,7 +8,7 @@ use thiserror::Error;
 use uuid::Uuid;
 use weaviate_community::collections::objects::{MultiObjects, Object, ObjectListParameters};
 use weaviate_community::collections::query::{ExploreQuery, GetQuery};
-use weaviate_community::collections::schema::{Class, Properties, Property};
+use weaviate_community::collections::schema::{Class, Classes, Properties, Property};
 use weaviate_community::WeaviateClient;
 use crate::notes::entities::NoteEntity;
 use crate::notes::service::NotesService;
@@ -105,7 +106,13 @@ impl From<&NoteEntity> for Value {
 impl WeaviateService {
     pub async fn new() -> Result<Self, WeaviateServiceError> {
         println!("Creating Weaviate service");
-        let client = WeaviateClient::builder("http://localhost:8081").build()?;
+        let hostname = env::var("WEAVIATE_HOSTNAME").unwrap();
+        let port = env::var("WEAVIATE_PORT").unwrap();
+        let url = format!("http://{}:{}", hostname, port);
+
+        println!("Weaviate URL: {}", url);
+
+        let client = WeaviateClient::builder(&url).build()?;
 
         let service = Self {
             client: Arc::new(client),

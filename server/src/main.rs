@@ -38,8 +38,8 @@ async fn main() -> Result<(), DynamoRepositoryError> {
 
     let repository = DynamoNotesRepository::new(client);
     let notes_service = NotesService::new(repository);
-    let ai_service = SentenceEncoderService::new();
     let weaviate_service = WeaviateService::new().await.unwrap();
+    let ai_service = SentenceEncoderService::new();
     let chatgpt_service = ChatGptService::new();
 
     let path: PathBuf = env::var("FRONTEND_LOCATION")
