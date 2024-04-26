@@ -4,9 +4,10 @@ use apistos::api_operation;
 use uuid::Uuid;
 
 use crate::ai::service::AiService;
-use orm::prelude::{CrudService, DynamoRepositoryError};
+use orm::prelude::{DynamoRepositoryError};
+use crate::helpers::{Truncatable, TruncatedString};
 
-use crate::notes::entities::{NewNoteEntity, NoteEntity};
+use crate::notes::models::{NewNoteDTO, NoteDTO};
 
 use crate::notes::service::NotesService;
 
@@ -23,8 +24,14 @@ pub fn get_routes() -> actix_web::Scope {
 #[get("")]
 async fn get_notes(
     notes_service: Data<NotesService>,
-) -> Result<Json<Vec<NoteEntity>>, DynamoRepositoryError> {
-    Ok(Json(notes_service.find_all().await?))
+) -> Result<Json<Vec<NoteDTO>>, DynamoRepositoryError> {
+    Ok(Json(notes_service.find_all().await?.into_iter().map(|note| {
+        let mut note_dto: NoteDTO = note.into();
+
+        note_dto.body = note_dto.body.truncate_with_dots(100);
+
+        note_dto
+    }).collect()))
 }
 
 #[api_operation()]
@@ -32,29 +39,29 @@ async fn get_notes(
 async fn get_note_by_id(
     path: Path<Uuid>,
     notes_service: Data<NotesService>,
-) -> Json<Option<NoteEntity>> {
-    Json(notes_service.find_by_id(path.into_inner()).await.unwrap())
+) -> Json<Option<NoteDTO>> {
+    Json(notes_service.find_by_id(path.into_inner()).await.unwrap().map(|note| note.into()))
 }
 
 #[post("")]
 async fn create_note(
-    note: Json<NewNoteEntity>,
+    note: Json<NewNoteDTO>,
     notes_service: Data<NotesService>,
     ai_service: Data<AiService>,
-) -> Result<Json<NoteEntity>, DynamoRepositoryError> {
-    Ok(Json(notes_service.create_note(&note, ai_service).await?))
+) -> Result<Json<NoteDTO>, DynamoRepositoryError> {
+    Ok(Json(notes_service.create_note(&note, ai_service).await?.into()))
 }
 
 #[put("/{id}")]
 async fn update_note(
     path: Path<Uuid>,
-    note: Json<NoteEntity>,
+    note: Json<NoteDTO>,
     notes_service: Data<NotesService>,
     ai_service: Data<AiService>,
-) -> Result<Json<NoteEntity>, DynamoRepositoryError> {
+) -> Result<Json<NoteDTO>, DynamoRepositoryError> {
     Ok(Json(
         notes_service
-            .update_note(path.into_inner(), &note, ai_service)
-            .await?,
+            .update_note(path.into_inner(), &note.into_inner().into(), ai_service)
+            .await?.into(),
     ))
 }

@@ -18,6 +18,7 @@ use crate::notes::service::NotesService;
 
 mod ai;
 mod notes;
+mod helpers;
 
 #[actix_web::main]
 async fn main() -> Result<(), DynamoRepositoryError> {

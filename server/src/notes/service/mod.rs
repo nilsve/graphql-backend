@@ -5,7 +5,8 @@ use orm::prelude::{
 };
 use uuid::Uuid;
 
-use crate::notes::entities::{NewNoteEntity, NoteEntity};
+use crate::notes::entities::{NoteEntity};
+use crate::notes::models::NewNoteDTO;
 use crate::notes::repository::{DynamoNotesRepository, NotePrimaryIndex};
 
 #[derive(Clone)]
@@ -54,7 +55,7 @@ impl NotesService {
             QueryNoteIndex::find_all(),
             last_evaluated_key,
         ))
-        .await
+            .await
     }
 
     pub async fn find_all(&self) -> Result<Vec<NoteEntity>, DynamoRepositoryError> {
@@ -63,7 +64,7 @@ impl NotesService {
 
     pub async fn create_note(
         &self,
-        note: &NewNoteEntity,
+        note: &NewNoteDTO,
         ai_service: Data<AiService>,
     ) -> Result<NoteEntity, DynamoRepositoryError> {
         let note: NoteEntity = note.to_owned().into();

@@ -8,11 +8,11 @@ use crate::repository::repository::{DynamoRepository, RepositoryIndex};
 
 #[async_trait::async_trait]
 pub trait CrudService<E, R>
-where
-    E: Entity,
-    E::PrimaryKey: Serialize,
-    E::IndexFields: Serialize,
-    R: DynamoRepository<E>,
+    where
+        E: Entity,
+        E::PrimaryKey: Serialize,
+        E::IndexFields: Serialize,
+        R: DynamoRepository<E>,
 {
     fn get_repository(&self) -> &R;
     async fn create(&self, entity: E) -> Result<PutItemOutput, DynamoRepositoryError> {
@@ -31,6 +31,7 @@ where
         self.get_repository().find(index).await
     }
     async fn get<Index: RepositoryIndex>(&self, index: Index) -> Result<E, DynamoRepositoryError> {
+        println!("Hoi hij komt hier");
         self.get_repository().get(index).await
     }
 

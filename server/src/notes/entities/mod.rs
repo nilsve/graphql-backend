@@ -15,23 +15,6 @@ pub struct NoteEntity {
     // created_at: NaiveDateTime,
 }
 
-#[derive(Debug, Clone, Deserialize, ApiComponent, JsonSchema)]
-pub struct NewNoteEntity {
-    pub title: String,
-    pub body: String,
-}
-
-impl From<NewNoteEntity> for NoteEntity {
-    fn from(new_note: NewNoteEntity) -> Self {
-        NoteEntity {
-            id: Uuid::new_v4(),
-            title: new_note.title,
-            body: new_note.body,
-            encoded: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct NoteIndex {}
 
