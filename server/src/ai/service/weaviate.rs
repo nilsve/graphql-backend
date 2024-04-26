@@ -115,7 +115,7 @@ impl WeaviateService {
         }).unwrap().replace("\"", "");
 
         let query = ExploreQuery::builder()
-            .with_limit(1)
+            .with_limit(2)
             .with_near_vector(&query_data)
             .with_fields(vec!["beacon", "certainty", "distance", "className"])
             .build();
@@ -130,7 +130,10 @@ impl WeaviateService {
         &self,
         note: &NoteEntity,
     ) -> Result<(), WeaviateServiceError> {
-        self.client.objects.delete(NOTE_CLASS, &note.id, None, None).await?;
+        match self.client.objects.delete(NOTE_CLASS, &note.id, None, None).await {
+            Ok(_) => println!("Successfully deleted item for updating {:?}", note.id),
+            Err(_) => println!("Coudln't delete item for updating {:?}", note.id)
+        };
 
         self.insert_note(note).await?;
 
